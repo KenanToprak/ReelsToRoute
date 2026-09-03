@@ -9,6 +9,7 @@ class Route(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String, default="Yeni Gezi Rotası")
+    estimated_days = Column(Integer, default=1) # Yeni eklendi!
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Bir rotanın birden fazla mekanı olabilir

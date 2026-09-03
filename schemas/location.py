@@ -23,6 +23,7 @@ class LocationResponse(LocationBase):
 
 class RouteBase(BaseModel):
     name: str
+    estimated_days: int = 1
 
 class RouteCreate(RouteBase):
     pass

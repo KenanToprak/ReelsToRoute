@@ -4,8 +4,7 @@ from core.database import Base, engine
 from api.endpoints import auth, locations, routes
 from models import user, location # Import models so SQLAlchemy knows about them
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# We no longer use Base.metadata.create_all(bind=engine) because Alembic handles migrations now!
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
