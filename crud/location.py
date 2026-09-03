@@ -3,10 +3,7 @@ from models.location import Location, Route
 from schemas.location import LocationCreate
 from services import ai_service, map_service
 
-def analyze_and_save_location(db: Session, user_id: int, description: str):
-    # 1. AI ile mekanı bul
-    ai_data = ai_service.analyze_location_from_text(description)
-    
+def _process_location_and_route(db: Session, user_id: int, ai_data: dict):
     # 2. Yeni mekan objesini oluştur
     new_location = Location(
         user_id=user_id,
@@ -54,6 +51,16 @@ def analyze_and_save_location(db: Session, user_id: int, description: str):
     db.refresh(new_location)
     
     return new_location
+
+def analyze_and_save_location(db: Session, user_id: int, description: str):
+    # 1. AI ile mekanı bul (Metin)
+    ai_data = ai_service.analyze_location_from_text(description)
+    return _process_location_and_route(db, user_id, ai_data)
+
+def analyze_and_save_image_location(db: Session, user_id: int, image_bytes: bytes):
+    # 1. AI ile mekanı bul (Görsel)
+    ai_data = ai_service.analyze_location_from_image(image_bytes)
+    return _process_location_and_route(db, user_id, ai_data)
 
 def get_user_routes(db: Session, user_id: int):
     return db.query(Route).filter(Route.user_id == user_id).all()
