@@ -13,8 +13,15 @@ def _process_location_and_route(db: Session, user_id: int, ai_data: dict):
         longitude=ai_data["longitude"]
     )
     
-    # 3. Kullanıcının önceki mekanlarını getir
-    past_locations = db.query(Location).filter(Location.user_id == user_id).all()
+    # 3. Kullanıcının önceki mekanlarını getir (Milyonlarca kayıt olabileceği için Bounding Box Optimizasyonu kullanıyoruz)
+    lat_margin = 0.5 # ~55 km sınır
+    lon_margin = 0.6 # ~55 km sınır (ekvatordan uzaklaştıkça değişir ama güvenli marj)
+    
+    past_locations = db.query(Location).filter(
+        Location.user_id == user_id,
+        Location.latitude.between(new_location.latitude - lat_margin, new_location.latitude + lat_margin),
+        Location.longitude.between(new_location.longitude - lon_margin, new_location.longitude + lon_margin)
+    ).all()
     
     closest_location = None
     min_distance = float('inf')

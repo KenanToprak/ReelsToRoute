@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -14,8 +14,12 @@ router = APIRouter()
 class ReelsInput(BaseModel):
     description: str
 
+from main import limiter # Limiter'ı main.py'den içe aktarıyoruz
+
 @router.post("/analyze", response_model=LocationResponse)
+@limiter.limit("5/minute")
 def analyze_reels_and_save(
+    request: Request,
     reels_input: ReelsInput, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -24,12 +28,17 @@ def analyze_reels_and_save(
     Sends the Reels description to the AI, finds the location, 
     and automatically adds it to a route if it's close to a past location.
     """
-    return crud_location.analyze_and_save_location(db=db, user_id=current_user.id, description=reels_input.description)
+    try:
+        return crud_location.analyze_and_save_location(db=db, user_id=current_user.id, description=reels_input.description)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail="Yapay Zeka servisi şu an kullanılamıyor, lütfen tekrar deneyin.")
 
 from fastapi import UploadFile, File, HTTPException
 
 @router.post("/analyze-image", response_model=LocationResponse)
+@limiter.limit("5/minute")
 async def analyze_image_and_save(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -48,7 +57,10 @@ async def analyze_image_and_save(
     if len(image_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large. Maximum size is 5MB.")
         
-    return crud_location.analyze_and_save_image_location(db=db, user_id=current_user.id, image_bytes=image_bytes)
+    try:
+        return crud_location.analyze_and_save_image_location(db=db, user_id=current_user.id, image_bytes=image_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail="Yapay Zeka servisi şu an kullanılamıyor, lütfen tekrar deneyin.")
 
 @router.get("/my-locations", response_model=List[LocationResponse])
 def get_my_locations(

@@ -10,3 +10,5 @@ python-multipart
 geopy
 google-genai
 python-dotenv
+
+slowapi
