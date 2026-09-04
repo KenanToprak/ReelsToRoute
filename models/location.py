@@ -7,20 +7,20 @@ class Route(Base):
     __tablename__ = "routes"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, default="Yeni Gezi Rotası")
     estimated_days = Column(Integer, default=1) # Yeni eklendi!
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Bir rotanın birden fazla mekanı olabilir
-    locations = relationship("Location", back_populates="route")
+    locations = relationship("Location", back_populates="route", cascade="all, delete")
 
 class Location(Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    route_id = Column(Integer, ForeignKey("routes.id"), nullable=True) # Bir rotaya ait olmayabilir (henüz)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    route_id = Column(Integer, ForeignKey("routes.id", ondelete="SET NULL"), nullable=True) # Bir rotaya ait olmayabilir (henüz)
     
     name = Column(String, nullable=False)
     description = Column(String)

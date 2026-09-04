@@ -26,7 +26,7 @@ def analyze_reels_and_save(
     """
     return crud_location.analyze_and_save_location(db=db, user_id=current_user.id, description=reels_input.description)
 
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, HTTPException
 
 @router.post("/analyze-image", response_model=LocationResponse)
 async def analyze_image_and_save(
@@ -38,8 +38,16 @@ async def analyze_image_and_save(
     Upload a screenshot of a Reel. The Vision AI will identify the location 
     and automatically group it into a nearby route.
     """
-    # Read the file bytes
+    # 1. Dosya Uzantısı/Tipi Kontrolü (Güvenlik)
+    allowed_types = ["image/jpeg", "image/png", "image/jpg"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPEG or PNG images are allowed.")
+        
+    # 2. Dosya Boyutu Kontrolü (Güvenlik - Max 5MB)
     image_bytes = await file.read()
+    if len(image_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 5MB.")
+        
     return crud_location.analyze_and_save_image_location(db=db, user_id=current_user.id, image_bytes=image_bytes)
 
 @router.get("/my-locations", response_model=List[LocationResponse])
