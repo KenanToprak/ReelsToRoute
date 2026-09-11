@@ -14,7 +14,7 @@ router = APIRouter()
 class ReelsInput(BaseModel):
     description: str
 
-from main import limiter # Limiter'ı main.py'den içe aktarıyoruz
+from core.limiter import limiter # Limiter'ı core.limiter'dan içe aktarıyoruz
 
 @router.post("/analyze", response_model=LocationResponse)
 @limiter.limit("5/minute")
