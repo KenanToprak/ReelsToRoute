@@ -19,8 +19,8 @@ import models.location
 # access to the values within the .ini file in use.
 config = context.config
 
-# Overwrite the sqlalchemy.url from our FastAPI settings!
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Overwrite the sqlalchemy.url from our FastAPI settings (escape % for ConfigParser)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -55,6 +55,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -76,7 +77,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():

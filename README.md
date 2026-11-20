@@ -1,35 +1,74 @@
 # ReelsToRoute AI 🌍✈️
 
-ReelsToRoute is an AI-powered travel planning API. It allows users to submit descriptions (or text extracted from Instagram Reels), uses Artificial Intelligence to identify the location and coordinates, and automatically groups nearby locations into sensible Travel Routes.
+ReelsToRoute is an AI-powered travel planning API built with FastAPI, SQLAlchemy, Alembic, and Google Gemini. It extracts geographic locations from Instagram Reels descriptions or screenshots and automatically groups nearby locations (within 50 km) into travel routes.
 
 ## Features ✨
 
-*   **AI Location Extraction:** Integrates with Google Gemini (or uses intelligent mocking) to find geographic coordinates from unstructured text/reels descriptions.
-*   **Geospatial Routing:** Automatically calculates the Haversine/Geodesic distance between a new location and previously saved locations using `geopy`.
-*   **Smart Trip Building:** If a newly discovered place is within 50km of a previously saved place, they are automatically grouped into a Travel Route.
-*   **JWT Authentication:** Secure user registration and login system.
-*   **FastAPI & PostgreSQL:** High-performance async API with a robust relational database.
+* **AI Location Extraction:** Integrates with Google Gemini (`google-genai`, `gemini-2.5-flash`) with JSON schema output and built-in deterministic mock fallback when `GEMINI_API_KEY` is unset.
+* **Vision Location Analysis:** Accepts JPEG and PNG uploads (up to 5 MB, verified by magic bytes) and offloads blocking AI/DB work from the async event loop.
+* **Geospatial Routing:** Calculates geodesic distances using `geopy` with latitude-aware bounding-box prefiltering and automatically groups locations within 50 km into routes.
+* **JWT Authentication & Rate Limiting:** `bcrypt` password hashing, HS256 JWT bearer tokens, and `slowapi` per-IP rate limiting on auth and AI endpoints.
+* **Database Migrations:** Versioned schema management via Alembic (PostgreSQL and SQLite compatible).
 
 ## Architecture
 
-*   `models/`: SQLAlchemy database schema (User, Route, Location)
-*   `schemas/`: Pydantic models for data validation
-*   `crud/`: Core algorithmic logic for distance calculation and route grouping
-*   `services/`: External integrations (`ai_service.py` for Gemini, `map_service.py` for Geopy)
+* `main.py`: FastAPI application entrypoint, CORS middleware, rate limiter, `/` and `/health` endpoints, router mounting.
+* `core/`: Configuration (`config.py`), SQLAlchemy engine/session/naming convention (`database.py`), `slowapi` limiter (`limiter.py`), `bcrypt` + JWT utilities (`security.py`).
+* `models/`: SQLAlchemy ORM models (`User`, `Route`, `Location`).
+* `schemas/`: Pydantic v2 request/response schemas.
+* `crud/`: User creation/lookup (`user.py`) and atomic geospatial location/route grouping (`location.py`).
+* `services/`: Gemini text/image extraction (`ai_service.py`) and geodesic distance helpers (`map_service.py`).
+* `api/`: JWT dependency (`deps.py`) and route handlers (`endpoints/auth.py`, `endpoints/locations.py`, `endpoints/routes.py`).
+* `alembic/`: Database migration environment and version scripts.
+* `tests/`: Automated `pytest` test suite.
 
-## How to Test the AI Feature Locally
+## Local Setup
 
-1. Create a virtual environment and `pip install -r requirements.txt`.
-2. Ensure you have a PostgreSQL database named `reels_route_db` and update `core/config.py` with your credentials.
-3. Start the server: `uvicorn main:app --reload`
-4. Go to `http://127.0.0.1:8000/docs`
-5. **Register & Login** using the `/auth` endpoints.
-6. Use the **`POST /locations/analyze`** endpoint.
-   * Send a JSON like: `{"description": "Dün izlediğim reelsta Eyfel Kulesi çok güzel görünüyordu."}`
-   * The AI service will extract "Eiffel Tower", find its Lat/Lon, and save it.
-   * Send another JSON like: `{"description": "Kolezyum etrafında yürüyüş."}`
-   * Since Rome is far from Paris, it will be saved separately.
-   * Send another JSON like: `{"description": "Louvre müzesi cam piramidi harika."}` (If using real API key). The system will detect it's close to the Eiffel Tower and automatically create a "Paris Route"!
+1. Create and activate a virtual environment, then install dependencies:
+   ```bash
+   python -m venv .venv
+   # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+   # Linux/macOS: source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. Copy `.env.example` to `.env` and configure your environment variables (`DATABASE_URL`, `SECRET_KEY`, `ALLOWED_ORIGINS`, optional `GEMINI_API_KEY`):
+   ```bash
+   cp .env.example .env
+   ```
+3. Run database migrations:
+   ```bash
+   alembic upgrade head
+   ```
+4. Start the API server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+5. Open interactive API docs at `http://127.0.0.1:8000/docs`.
 
-## Note on AI API Key
-In `core/config.py`, you can set `GEMINI_API_KEY`. If left empty, the application will use built-in mock AI responses for testing purposes so you don't have to pay for API usage during development.
+## API Endpoints & Rate Limits
+
+* `GET /` — API welcome message (sync)
+* `GET /health` — Health check (`{"status": "ok"}`, sync)
+* `POST /auth/register` — Register a new user (`5/minute`, sync)
+* `POST /auth/login` — OAuth2 password login returning bearer JWT (`10/minute`, sync)
+* `POST /locations/analyze` — Extract and save location from text description (`5/minute`, sync)
+* `POST /locations/analyze-image` — Extract and save location from JPEG/PNG upload (`5/minute`, async with `run_in_threadpool`)
+* `GET /locations/my-locations` — List saved locations with `skip`/`limit` pagination (sync)
+* `GET /routes/my-routes` — List grouped routes and their locations with `skip`/`limit` pagination (sync)
+
+### Mock AI Mode
+
+If `GEMINI_API_KEY` is left empty in `.env`, the application uses built-in mock AI responses (for example, descriptions mentioning `"Eyfel"`/`"Paris"` return Eiffel Tower, `"Kolezyum"`/`"Colosseum"`/`"Roma"` return Colosseum, and image uploads return Statue of Liberty).
+
+## Running Tests
+
+Install development dependencies and run the automated test suite:
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+## Security Notice
+
+Historical commit `23d5a527` (prior to commit `617a0e70`) contained sample database and JWT secret values in `core/config.py`. If those credentials were ever used in an active database or environment, rotate them immediately.

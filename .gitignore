@@ -13,6 +13,20 @@ __pycache__/
 *$py.class
 *.so
 
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Linters / Type Checkers
+.ruff_cache/
+.mypy_cache/
+
 # IDEs
 .vscode/
 .idea/

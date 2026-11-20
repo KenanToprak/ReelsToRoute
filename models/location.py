@@ -1,32 +1,34 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from datetime import datetime, timezone
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from core.database import Base
+
 
 class Route(Base):
     __tablename__ = "routes"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, default="Yeni Gezi Rotası")
-    estimated_days = Column(Integer, default=1) # Yeni eklendi!
-    created_at = Column(DateTime, default=datetime.utcnow)
+    estimated_days = Column(Integer, nullable=False, default=1, server_default="1")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    # Bir rotanın birden fazla mekanı olabilir
-    locations = relationship("Location", back_populates="route", cascade="all, delete")
+    # Deleting a Route preserves saved Locations with route_id set to NULL
+    locations = relationship("Location", back_populates="route")
+
 
 class Location(Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    route_id = Column(Integer, ForeignKey("routes.id", ondelete="SET NULL"), nullable=True) # Bir rotaya ait olmayabilir (henüz)
-    
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    route_id = Column(Integer, ForeignKey("routes.id", ondelete="SET NULL"), nullable=True, index=True)
+
     name = Column(String, nullable=False)
     description = Column(String)
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
-    source_image_url = Column(String, nullable=True) # Reels ekran görüntüsü vb.
-    created_at = Column(DateTime, default=datetime.utcnow)
+    latitude = Column(Float, nullable=False, index=True)
+    longitude = Column(Float, nullable=False, index=True)
+    source_image_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     route = relationship("Route", back_populates="locations")
